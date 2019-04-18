@@ -1,0 +1,10 @@
+BLAS example: http://www.netlib.org/lapack/explore-html/d1/dff/cblas__example1_8c_source.html
+Main paper: https://onlinelibrary.wiley.com/doi/pdf/10.1002/(SICI)1096-9128(199704)9:4%3C255::AID-CPE250%3E3.0.CO;2-2
+Other paper: https://onlinelibrary.wiley.com/doi/pdf/10.1002/%28SICI%291096-9128%28199807%2910%3A8%3C655%3A%3AAID-CPE369%3E3.0.CO%3B2-O
+BLAS mm: https://onlinelibrary.wiley.com/doi/pdf/10.1002/%28SICI%291096-9128%28199709%299%3A9%3C837%3A%3AAID-CPE267%3E3.0.CO%3B2-2
+
+Other implementation:
+http://www.mscs.mu.edu/~rge/mscs6060/homework-s2014/mpi_matmul/matmul_mpi.c
+https://github.com/irifed/mpi101/blob/master/summa.c
+https://www8.cs.umu.se/kurser/5DV050/VT09/assignment2-gemm.pdf
+https://www.researchgate.net/figure/Steps-of-the-SUMMA-algorithm_fig4_30045856
