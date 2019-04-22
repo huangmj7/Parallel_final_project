@@ -10,3 +10,7 @@ https://www8.cs.umu.se/kurser/5DV050/VT09/assignment2-gemm.pdf
 https://www.researchgate.net/figure/Steps-of-the-SUMMA-algorithm_fig4_30045856
 
 First step： scatter A and B https://stackoverflow.com/questions/29325513/scatter-matrix-blocks-of-different-sizes-using-mpi/29325584
+
+
+
+http://www.netlib.org/lapack/lawnspdf/lawn129.pdf
