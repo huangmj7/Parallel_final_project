@@ -8,3 +8,5 @@ http://www.mscs.mu.edu/~rge/mscs6060/homework-s2014/mpi_matmul/matmul_mpi.c
 https://github.com/irifed/mpi101/blob/master/summa.c
 https://www8.cs.umu.se/kurser/5DV050/VT09/assignment2-gemm.pdf
 https://www.researchgate.net/figure/Steps-of-the-SUMMA-algorithm_fig4_30045856
+
+First step： scatter A and B https://stackoverflow.com/questions/29325513/scatter-matrix-blocks-of-different-sizes-using-mpi/29325584
