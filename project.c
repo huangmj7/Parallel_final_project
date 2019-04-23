@@ -17,7 +17,7 @@ int unitedge;
 
 /*input functions*/
 void print2d(double *array, int r, int c);
-void reshape(double* array, int np, int k,int *blocks,int row, int col, double *result);
+void reshape(double* array, int np, int k,int *blocks,int row, int col, double *result, int type);
 void SUMMA(double* a_loc, double* b_loc, double* c_loc);
 
 int input(char* files,double* A, double* B){
@@ -87,6 +87,7 @@ int main(int argc,char**argv){
 	double *unit_A,*unit_B,*unit_C;
 	double *A = calloc(m*k, sizeof(double));
 	double *B = calloc(k*n,sizeof(double));
+	double *C = calloc(m*n,sizeof(double));
 	int blocksize_A = (m*k)/size;
 	int blocksize_B = (k*n)/size;
 	unit_A = calloc(blocksize_A,sizeof(double));
@@ -98,18 +99,18 @@ int main(int argc,char**argv){
 		double *a = calloc(m*k,sizeof(double));
 		double *b = calloc(k*n,sizeof(double));
 		input(argv[1],a,b);
-		print2d(a,m,k);
-		printf("\n");
-		print2d(b,k,n);
+		//print2d(a,m,k);
+		//printf("\n");
+		//print2d(b,k,n);
 
 		int ak = n;
 		int ar = m/blocks[0];
 		int ac = k/blocks[1];
-		reshape(a,size,ak,blocks,ar,ac,A);
+		reshape(a,size,ak,blocks,ar,ac,A,1);
 		int bk = k;
 		int br = k/blocks[0];
 		int bc = n/blocks[1];
-		reshape(b,size,bk,blocks,br,bc,B);
+		reshape(b,size,bk,blocks,br,bc,B,1);
 		free(a);
 		free(b);
 
@@ -120,7 +121,7 @@ int main(int argc,char**argv){
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	SUMMA(unit_A, unit_B, unit_C);
-
+/*
 	for(int i = 0; i < size; i++){
 		if(rank == i){
 			printf("Rank %d:\n", rank);
@@ -128,6 +129,15 @@ int main(int argc,char**argv){
 		}
 
 		MPI_Barrier(MPI_COMM_WORLD);
+	}
+*/
+	int blocksize_c = (m*n)/size;
+	MPI_Gather(unit_C,blocksize_c,MPI_DOUBLE,C,blocksize_c,MPI_DOUBLE,0,MPI_COMM_WORLD);
+	if(rank == 0){
+
+		double* ans = calloc(m*n,sizeof(double));
+		reshape(C,size,n,blocks,m/blocks[0],n/blocks[1],ans,2);
+		print2d(ans,m,n);
 	}
 
 	MPI_Finalize();
@@ -147,22 +157,27 @@ void print2d(double *array, int r, int c){
 
 }
 
-void reshape(double* array, int np, int k,int *blocks,int row, int col, double *result){
 
-	int n=0;
-	if(row == 0){return;}
-	for(int p=0; p<np; p++){
-		int r = (int) p/blocks[1];
-		int c = p%blocks[1];
-		for(int i=0; i<row; i++){
-			for(int j=0; j<col; j++){
-				//printf("%d %d %d\n",p,i,j);
-				result[n] = array[(i+r*row)*k+((c*col)+j)];
-				n++;
-			}
-		}
-	}
+void reshape(double* array, int np, int k,int *blocks,int row, int col, double *result, int type){
+
+        int n=0;
+        if(row == 0){return;}
+        for(int p=0; p<np; p++){
+                int r = (int) p/blocks[1];
+                int c = p%blocks[1];
+                for(int i=0; i<row; i++){
+                        for(int j=0; j<col; j++){
+                                //printf("%d %d %d\n",p,i,j);
+                                if(type == 1){result[n] = array[(i+r*row)*k+((c*col)+j)];}
+                                else if(type == 2){result[(i+r*row)*k+((c*col)+j)] = array[n];}
+                                n++;
+                        }
+                }
+        }
 }
+
+
+
 
 
 void SUMMA(double* a_loc, double* b_loc, double* c_loc){
@@ -181,17 +196,19 @@ void SUMMA(double* a_loc, double* b_loc, double* c_loc){
 
 	unitedge = m / rank_edge;
 
+	/*
 	if(rank == 0){
 		printf("%d %d\n", rank_loc[0], rank_loc[1]);
 		printf("rankedge: %d\nunitedge: %d\n", rank_edge, unitedge);
 	}
+	*/
 
 		
 	MPI_Barrier(MPI_COMM_WORLD);
 	
 	for(int kk = 0; kk < k; kk++){
 
-		if(rank == 0) printf("KK %d\n", kk);
+		//if(rank == 0) printf("KK %d\n", kk);
 
 		//printf("R%d: %d %d\n", rank, rank_loc[0], rank_loc[1]);
 
@@ -203,7 +220,7 @@ void SUMMA(double* a_loc, double* b_loc, double* c_loc){
 
 			//printf("R%d: %d %d\n",rank, loc[0], loc[1]);
 				
-			printf("R%d: soc row rank %d\n",rank, soc_rank);
+			//printf("R%d: soc row rank %d\n",rank, soc_rank);
 			
 			MPI_Irecv(work_row, unitedge, MPI_DOUBLE, soc_rank, kk, MPI_COMM_WORLD, &request);
 		}
@@ -229,7 +246,7 @@ void SUMMA(double* a_loc, double* b_loc, double* c_loc){
 
 				int dst_rank = (loc[0]*rank_edge + loc[1]);
 
-				printf("R%d: dst row rank %d\n", rank, dst_rank);
+				//printf("R%d: dst row rank %d\n", rank, dst_rank);
 
 				MPI_Isend(work_row, unitedge, MPI_DOUBLE, dst_rank, kk, MPI_COMM_WORLD, &request);
 			}
@@ -243,7 +260,7 @@ void SUMMA(double* a_loc, double* b_loc, double* c_loc){
 
 			int soc_rank = (loc[0]*rank_edge + loc[1]);
 			
-			printf("R%d: soc col rank %d\n",rank, soc_rank);
+			//printf("R%d: soc col rank %d\n",rank, soc_rank);
 
 			MPI_Irecv(work_col, unitedge, MPI_DOUBLE, soc_rank, kk, MPI_COMM_WORLD, &request);
 
@@ -268,7 +285,7 @@ void SUMMA(double* a_loc, double* b_loc, double* c_loc){
 				
 				int dst_rank = (loc[0]*rank_edge + loc[1]);
 				
-				printf("R%d: dst col rank %d\n", rank, dst_rank);
+				//printf("R%d: dst col rank %d\n", rank, dst_rank);
 				
 				MPI_Isend(work_col, unitedge, MPI_DOUBLE, dst_rank, kk, MPI_COMM_WORLD, &request);
 			}
