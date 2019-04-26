@@ -20,6 +20,9 @@ void print2d(double *array, int r, int c);
 void reshape(double* array, int np, int k,int *blocks,int row, int col, double *result, int type);
 void SUMMA(double* a_loc, double* b_loc, double* c_loc);
 
+/*File Reader
+ *The input file have two lines of data, and each line represents a matrix
+ */ 
 int input(char* files,double* A, double* B){
 
 	if(m == -1 || n == -1 || k == -1 || sizeof(files) == 0 || A == NULL || B == NULL){
@@ -47,22 +50,22 @@ int input(char* files,double* A, double* B){
 }
 
 
+/* Main routine
+ * argv[1] input file
+ * argv[2] output file
+ * argv[3] m
+ * argv[4] n
+ * argv[5] k
+ * A m*k
+ * B k*n
+ * C m*n
+ */     
 int main(int argc,char**argv){
 
 	if(argc < 5){
 		perror("ERROR: NOT ENOUGH INPUT");
 		return -1;
 	}
-	/*
-	 * argv[1] input file
-	 * argv[2] output file
-	 * argv[3] m
-	 * argv[4] n
-	 * argv[5] k
-	 * A m*k
-	 * B k*n
-	 * C m*n
-	 */     
 	rank = -1;
 	size = -1;
 	MPI_Init(&argc, &argv);
@@ -94,14 +97,12 @@ int main(int argc,char**argv){
 	unit_B = calloc(blocksize_B,sizeof(double));
 	unit_C = calloc( m * n/ size, sizeof(double));
 
+	//Let the root rank to reshape input matrix A and B
 	if(rank == 0){
 
 		double *a = calloc(m*k,sizeof(double));
 		double *b = calloc(k*n,sizeof(double));
 		input(argv[1],a,b);
-		//print2d(a,m,k);
-		//printf("\n");
-		//print2d(b,k,n);
 
 		int ak = n;
 		int ar = m/blocks[0];
@@ -116,21 +117,14 @@ int main(int argc,char**argv){
 
 	}
 
+	//Distribute Matrixs to each rank
 	MPI_Scatter(A,blocksize_A,MPI_DOUBLE,unit_A,blocksize_A,MPI_DOUBLE,0,MPI_COMM_WORLD);
 	MPI_Scatter(B,blocksize_B,MPI_DOUBLE,unit_B,blocksize_B,MPI_DOUBLE,0,MPI_COMM_WORLD);       
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	SUMMA(unit_A, unit_B, unit_C);
-/*
-	for(int i = 0; i < size; i++){
-		if(rank == i){
-			printf("Rank %d:\n", rank);
-			print2d(unit_C, unitedge, unitedge);
-		}
 
-		MPI_Barrier(MPI_COMM_WORLD);
-	}
-*/
+	//Gather final result
 	int blocksize_c = (m*n)/size;
 	MPI_Gather(unit_C,blocksize_c,MPI_DOUBLE,C,blocksize_c,MPI_DOUBLE,0,MPI_COMM_WORLD);
 	if(rank == 0){
@@ -145,6 +139,8 @@ int main(int argc,char**argv){
 
 }
 
+
+//Visualize a 1d Array to a 2d Matrix
 void print2d(double *array, int r, int c){
 
 	for(int i=0; i<r; i++){
@@ -158,28 +154,27 @@ void print2d(double *array, int r, int c){
 }
 
 
+//Reshape a array to make it easier to distrubate by MPI_Scatter()
+//and gather by MPI_Gather()
 void reshape(double* array, int np, int k,int *blocks,int row, int col, double *result, int type){
 
-        int n=0;
-        if(row == 0){return;}
-        for(int p=0; p<np; p++){
-                int r = (int) p/blocks[1];
-                int c = p%blocks[1];
-                for(int i=0; i<row; i++){
-                        for(int j=0; j<col; j++){
-                                //printf("%d %d %d\n",p,i,j);
-                                if(type == 1){result[n] = array[(i+r*row)*k+((c*col)+j)];}
-                                else if(type == 2){result[(i+r*row)*k+((c*col)+j)] = array[n];}
-                                n++;
-                        }
-                }
-        }
+	int n=0;
+	if(row == 0){return;}
+	for(int p=0; p<np; p++){
+		int r = (int) p/blocks[1];
+		int c = p%blocks[1];
+		for(int i=0; i<row; i++){
+			for(int j=0; j<col; j++){
+				//printf("%d %d %d\n",p,i,j);
+				if(type == 1){result[n] = array[(i+r*row)*k+((c*col)+j)];}
+				else if(type == 2){result[(i+r*row)*k+((c*col)+j)] = array[n];}
+				n++;
+			}
+		}
+	}
 }
 
-
-
-
-
+//Main SUMMA algorithm
 void SUMMA(double* a_loc, double* b_loc, double* c_loc){
 
 	MPI_Status status;
@@ -196,57 +191,40 @@ void SUMMA(double* a_loc, double* b_loc, double* c_loc){
 
 	unitedge = m / rank_edge;
 
-	/*
-	if(rank == 0){
-		printf("%d %d\n", rank_loc[0], rank_loc[1]);
-		printf("rankedge: %d\nunitedge: %d\n", rank_edge, unitedge);
-	}
-	*/
-
-		
 	MPI_Barrier(MPI_COMM_WORLD);
-	
+
+	//for kk = 0 to k − 1
 	for(int kk = 0; kk < k; kk++){
 
-		//if(rank == 0) printf("KK %d\n", kk);
-
-		//printf("R%d: %d %d\n", rank, rank_loc[0], rank_loc[1]);
-
+		//Receive B(k, j) into Brow	
 		if(kk / unitedge != rank_loc[0]){
 			loc[0] = kk / unitedge;
 			loc[1] = rank_loc[1];
 
 			int soc_rank = (loc[0]*rank_edge + loc[1]);
 
-			//printf("R%d: %d %d\n",rank, loc[0], loc[1]);
-				
-			//printf("R%d: soc row rank %d\n",rank, soc_rank);
-			
 			MPI_Irecv(work_row, unitedge, MPI_DOUBLE, soc_rank, kk, MPI_COMM_WORLD, &request);
 		}
 
 		MPI_Barrier(MPI_COMM_WORLD);
-		
+
 		if(kk / unitedge != rank_loc[0]) {MPI_Wait(&request, &status);}
 
-		//Get partial row for computation
+		//owner of A(i, k) broadcasts it to whole processor row;
 		if(kk / unitedge == rank_loc[0]){
-		
 
 			int loc_row = kk - rank_loc[0] * unitedge; 
 
 			for(int i = 0; i < unitedge; i++){
 				work_row[i] = a_loc[loc_row * unitedge + i];
 			}
-			
+
 			for(int i = 1; (rank_loc[0] + i) % rank_edge != rank_loc[0]; i++){
-				
+
 				loc[0] = (rank_loc[0] + i) % rank_edge;
 				loc[1] = rank_loc[1];
 
 				int dst_rank = (loc[0]*rank_edge + loc[1]);
-
-				//printf("R%d: dst row rank %d\n", rank, dst_rank);
 
 				MPI_Isend(work_row, unitedge, MPI_DOUBLE, dst_rank, kk, MPI_COMM_WORLD, &request);
 			}
@@ -254,26 +232,25 @@ void SUMMA(double* a_loc, double* b_loc, double* c_loc){
 
 		MPI_Barrier(MPI_COMM_WORLD);
 
+		//Receive A(i, k) into Acol
 		if(kk / unitedge != rank_loc[1]){
 			loc[0] = rank_loc[0];
 			loc[1] = kk / unitedge;
 
 			int soc_rank = (loc[0]*rank_edge + loc[1]);
-			
-			//printf("R%d: soc col rank %d\n",rank, soc_rank);
 
 			MPI_Irecv(work_col, unitedge, MPI_DOUBLE, soc_rank, kk, MPI_COMM_WORLD, &request);
 
 		}
-		
+
 		MPI_Barrier(MPI_COMM_WORLD);
 
 		if(kk / unitedge != rank_loc[1]) {MPI_Wait(&request, &status);}
-		
-		//Get partial col for computation
+
+		//owner of B(k, j) broadcasts it to whole processor column;
 		if(kk / unitedge == rank_loc[1]){
 			int loc_col = kk - rank_loc[1] * unitedge;
-			
+
 			for(int i = 0; i < unitedge; i++){
 				work_col[i] = b_loc[i * unitedge + loc_col];
 			}
@@ -282,24 +259,22 @@ void SUMMA(double* a_loc, double* b_loc, double* c_loc){
 
 				loc[0] = rank_loc[0];
 				loc[1] = (rank_loc[1] + i) % rank_edge;
-				
+
 				int dst_rank = (loc[0]*rank_edge + loc[1]);
-				
-				//printf("R%d: dst col rank %d\n", rank, dst_rank);
-				
+
 				MPI_Isend(work_col, unitedge, MPI_DOUBLE, dst_rank, kk, MPI_COMM_WORLD, &request);
 			}
 		}
 
 		MPI_Barrier(MPI_COMM_WORLD);
 
-		//Multiply
+		//Cmyproc = Cmyproc + Acol * Brow
 		for(int i = 0; i < unitedge; i++){
 			for(int j = 0; j < unitedge; j++){
 				c_loc[i*unitedge + j] += work_col[i] * work_row[j];
 			}
 		}
-		
+
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
 
