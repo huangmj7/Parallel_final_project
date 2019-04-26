@@ -1,27 +1,45 @@
-<h1>Parallel Programming Project</h1>
+Parallel Programming Project
 
-test1.txt 8*8 
-test2.txt 16*16
-test3.txt 64*64
-test4.txt 1024*1024
+IMPORTANT: Current implemented SUMMA algorithm only supports rank size that can be square rooted.
+Therefore, all m, n, and k have to be divisable by sqrt(ranksize).
 
-result should equal to second matrix, i.e, B=C  
+Input Matric: A m x k B k x n
 
-t1.txt 64*64
-t2.txt 1024*1024
-t3.txt 4096*4096
-t4.txt 16384*16384
-t5.txt 65536*65536
+There are three executable in this project:
+
+1. SUMMA_NonBlocking.out -- Project_V1_0.c
+2. SUMMA_Blocking.out -- Project_V1_1.c clcg4.c
+
+3. Generate_TestCase.out -- generate.c
+
+* SUMMA_NonBlocking.out:
+Usage: <input file> <output file> <m> <n> <k>
+
+Compilation: mpicc Project_V1_0.c -o SUMMA_NonBlocking.out -lm
+
+However, we did not implement file output function. So, just input anything to avoid segmentation
+fault.
+
+This binary file is used in both vaildation and performance benchmark.
+
+* SUMMA_Blocking.out:
+Usage: <key> <m> <n> <k>
+
+-<key>: Used as a seed in clcg4 library
+
+Compilation: mpicc Project_V1_1.c clcg4.c -o SUMMA_Blocking.out -lm
+
+This one is only used for performance benchmark.
+
+* Generate_TestCase.out:
+Compilation: gcc generate.c -o matrix
+Usage: <outoutfile.txt> <n> <n> 
+(only support square matrix now)
 
 
-localproject:
+Vaildating that implemented SUMMA algorithm is correct:
+We current use 8*8 small case to vaildate:
 
-compile: mpicc -I. -Wall -O3 localProject.c clcg4.c -o test -lm
- 
-run: mpirun -np x ./test keys m n k  
-keys: a int number, if keys == 42, will generate matrix with all 1 for validation, else, it will generate random number
-
-
-
+mpirun ./SUMMA_NonBlocking.out <generated 8 * 8 input file> 8 8 8
 
 
